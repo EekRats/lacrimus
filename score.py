@@ -1,6 +1,7 @@
 import os
 import sys
 from wordfreq import top_n_list
+from wordfreq import zipf_frequency
 
 COMMON_TOP = 30000
 FULL_TOP = 100000
@@ -39,8 +40,9 @@ for path in sys.argv[1:]:
       if line.startswith("hostname:"):
         host = line.split(":", 1)[1].strip()
         cov, score, words = segment(host[:24])
-        results.append((score, cov, host, words))
+        freq = sum(zipf_frequency(w, "en") for w in words)
+        results.append((score, freq, cov, host, words))
 
 results.sort(reverse=True)
-for score, cov, host, words in results[:SHOW]:
+for score, freq, cov, host, words in results[:SHOW]:
   print(f"{score:4d} {cov:2d}  {'·'.join(words)}|{host[cov:]}")
