@@ -1,11 +1,14 @@
 import sys
 from wordfreq import top_n_list
 
-SEG_TOP = 30000
+SEG_TOP = 100000
 MIN_SEG = 3
 SHOW = 50
 
 vocab = {w for w in top_n_list("en", SEG_TOP) if w.isascii() and w.isalpha() and len(w) >= MIN_SEG}
+with open(os.path.expanduser("~/onions/filters.txt")) as f:
+  vocab.update(line.strip() for line in f if line.strip())
+
 maxlen = max(map(len, vocab))
 
 def segment(s):
