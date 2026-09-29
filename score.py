@@ -1,16 +1,20 @@
-import sys
 import os
+import sys
 from wordfreq import top_n_list
 
-SEG_TOP = 100000
+COMMON_TOP = 30000
+FULL_TOP = 100000
 MIN_SEG = 3
 SHOW = 50
 
-vocab = {w for w in top_n_list("en", SEG_TOP) if w.isascii() and w.isalpha() and len(w) >= MIN_SEG}
-with open(os.path.expanduser("~/onions/filters.txt")) as f:
-  vocab.update(line.strip() for line in f if line.strip())
+def load(n):
+  return {w for w in top_n_list("en", n) if w.isascii() and w.isalpha() and len(w) >= MIN_SEG}
 
-maxlen = max(map(len, vocab))
+common = load(COMMON_TOP)
+full = load(FULL_TOP) | common
+with open(os.path.expanduser("~/onions/filters.txt")) as f:
+  full.update(line.strip() for line in f if line.strip())
+maxlen = max(map(len, full))
 
 def segment(s):
   best = [None] * (len(s) + 1)
@@ -18,16 +22,15 @@ def segment(s):
   for i in range(len(s)):
     if best[i] is None:
       continue
+    vocab = full if i == 0 else common
     for j in range(i + MIN_SEG, min(len(s), i + maxlen) + 1):
       w = s[i:j]
       if w in vocab:
         score = best[i][0] + len(w) ** 2
         if best[j] is None or score > best[j][0]:
           best[j] = (score, best[i][1] + [w])
-  for i in range(len(s), 0, -1):
-    if best[i] is not None:
-      return i, best[i][0], best[i][1]
-  return 0, 0, []
+  end = max(range(len(s) + 1), key=lambda k: best[k][0] if best[k] else -1)
+  return end, best[end][0], best[end][1]
 
 results = []
 for path in sys.argv[1:]:
@@ -36,8 +39,8 @@ for path in sys.argv[1:]:
       if line.startswith("hostname:"):
         host = line.split(":", 1)[1].strip()
         cov, score, words = segment(host[:24])
-        results.append((cov, score, host, words))
+        results.append((score, cov, host, words))
 
 results.sort(reverse=True)
-for cov, score, host, words in results[:SHOW]:
-  print(f"{cov:2d} {score:4d}  {'·'.join(words)}|{host[cov:]}")
+for score, cov, host, words in results[:SHOW]:
+  print(f"{score:4d} {cov:2d}  {'·'.join(words)}|{host[cov:]}")
