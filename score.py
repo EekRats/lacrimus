@@ -1,4 +1,5 @@
 import sys
+import os
 from wordfreq import top_n_list
 
 SEG_TOP = 100000
